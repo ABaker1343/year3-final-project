@@ -25,9 +25,8 @@ if torch.cuda.is_available():
 else:
     device_type = "cpu"
 
-print(f"device type set to {device_type}")
-
 device = torch.device(device_type)
+print(f"device type set to {device_type}")
 
 # create the tensors
 x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
@@ -52,6 +51,9 @@ mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
 kl_weight = 0.01
 optimiser = optim.Adam(model.parameters(), lr=0.01)
+
+mse_loss.to(device)
+kl_loss.to(device)
 
 # set the number of epochs that we want to use
 num_epochs = 5000
