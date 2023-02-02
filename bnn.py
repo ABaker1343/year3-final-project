@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn import datasets
 
 import torch
 import torch.nn as nn
@@ -8,9 +7,8 @@ import torchbnn as bnn
 
 import matplotlib.pyplot as plt
 import pandas
-import time
 
-dataframe = pandas.read_csv("~/datasets/stock_market_data/sp500/csv/AMD.csv")
+dataframe = pandas.read_csv("datasets/stock_market_data/sp500/csv/AMD.csv")
 
 # change the dates into unix timestamps as that is a numeric type
 unix_times = [(pandas.to_datetime(row['Date']) - pandas.Timestamp("1970-01-01")) // pandas.Timedelta('1s') for _, row in dataframe.iterrows()]
@@ -56,7 +54,7 @@ kl_weight = 0.01
 optimiser = optim.Adam(model.parameters(), lr=0.01)
 
 # set the number of epochs that we want to use
-num_epochs = 3000
+num_epochs = 5000
 
 # train our model
 for i in range(num_epochs):
@@ -85,6 +83,8 @@ print('- Accuracy: %f %%' % (100 * float(correct) / total))
 def draw_plot(predicted) :
     plt.plot(X['UNIX'], Y, 'bo')
     plt.plot(X['UNIX'], predicted, 'ro')
+    plt.xlabel("time")
+    plt.ylabel("closing price")
 
     plt.show()
 
