@@ -42,9 +42,9 @@ model = nn.Sequential(
 #model = nn.Linear(2,1)
 
 # move the data and the model to the device
-x.to(device)
-y.to(device)
-model.to(device)
+x = x.to(device)
+y = y.to(device)
+model = model.to(device)
 
 # select our loss functions and optimiser
 mse_loss = nn.MSELoss()
@@ -52,8 +52,8 @@ kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
 kl_weight = 0.01
 optimiser = optim.Adam(model.parameters(), lr=0.01)
 
-mse_loss.to(device)
-kl_loss.to(device)
+mse_loss = mse_loss.to(device)
+kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
 num_epochs = 5000
@@ -65,6 +65,7 @@ for i in range(num_epochs):
     mse = mse_loss(predictions, y)
     kl = kl_loss(model)
     cost = mse + kl_weight * kl
+    cost.to(device)
 
     # back propagate our results
     optimiser.zero_grad()
