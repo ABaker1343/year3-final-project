@@ -15,7 +15,6 @@ unix_times = [(pandas.to_datetime(row['Date']) - pandas.Timestamp("1970-01-01"))
 
 # select the data that will be used to train our model
 dataframe['UNIX'] = unix_times
-#dataframe = dataframe.sample(frac=0.4)
 
 X = dataframe[['UNIX', 'Open', "Volume"]].apply(pandas.to_numeric)
 Y = dataframe['Close'].apply(pandas.to_numeric)
@@ -30,19 +29,18 @@ device = torch.device(device_type)
 print(f"device type set to {device_type}")
 
 # create the tensors
-print(X.values)
 x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 print(x.shape, y.shape)
 
 # create the model for our bayesian neural network
 
 model = nn.Sequential(
-        bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=3, out_features=300),
-        nn.ReLU(),
-        bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=300, out_features=1)
+        bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=3, out_features=100),
+        #nn.ReLU(),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=100, out_features=1)
         )
 
-#model = nn.Linear(3,1)
+#model = nn.Linear(2,1)
 
 # move the data and the model to the device
 x = x.to(device)
@@ -59,8 +57,8 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 100_000
-#num_epochs = 1_000
+num_epochs = 200_000
+num_epochs = 12_000
 
 # train our model
 for i in range(num_epochs):
@@ -69,7 +67,8 @@ for i in range(num_epochs):
     mse = mse_loss(predictions, y)
     kl = kl_loss(model)
     cost = mse + kl_weight * kl
-    
+    #cost.to(device)
+
     # back propagate our results
     optimiser.zero_grad()
     cost.backward()
@@ -77,18 +76,25 @@ for i in range(num_epochs):
 
     print(f"epoch {i} -- loss {cost}")
 
+# calculate the accuracy of our model
+_, predicted = torch.max(predictions.data, 1)
+total = y.size(0)
+correct = (predicted == y).sum()
+print('- Accuracy: %f %%' % (100 * float(correct) / total))
+#print('- CE : %2.2f, KL : %2.2f' % (ce.item(), kl.item()))
+
+
 # plot the results
 def draw_plot(predicted) :
-    predicted = predicted.cpu()
-    plt.plot(dataframe['UNIX'], Y, 'bo')
-    plt.plot(dataframe['UNIX'], predicted.cpu(), 'ro')
-    print(predicted)
+    plt.plot(X['UNIX'], Y, 'bo')
+    plt.plot(X['UNIX'], predicted.cpu(), 'ro')
     plt.xlabel("time")
     plt.ylabel("closing price")
 
     plt.show()
 
 predictions = model(x)
-prediction = predictions
+prediction = predictions.cpu()
+print(predictions.data)
 draw_plot(predictions.data)
 
