@@ -8,16 +8,17 @@ import torchbnn as bnn
 import matplotlib.pyplot as plt
 import pandas
 
-from loader import load_time_series, with_unix
+from loader import load_time_series, with_unix, split_dates
 
 dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
 
 # change the dates into unix timestamps as that is a numeric type
 dataframe = with_unix(dataframe)
+dataframe = split_dates(dataframe)
 # select the data that will be used to train our model
 #dataframe = dataframe.sample(frac=0.4)
 
-X = dataframe[['Unix', 'Open', "Volume"]].apply(pandas.to_numeric)
+X = dataframe[['High', 'Volume', "Close"]].apply(pandas.to_numeric)
 Y = dataframe['Close'].apply(pandas.to_numeric)
 
 # get the gpu to send the model to
@@ -38,11 +39,11 @@ print(x.shape, y.shape)
 
 model = nn.Sequential(
         bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=3, out_features=300),
-        nn.ReLU(),
+        #nn.ReLU(),
         bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=300, out_features=1)
         )
 
-#model = nn.Linear(3,1)
+model = nn.Linear(3,1)
 
 # move the data and the model to the device
 x = x.to(device)
@@ -59,7 +60,7 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 100_000
+num_epochs = 10_000
 #num_epochs = 1_000
 
 # train our model
@@ -81,7 +82,7 @@ for i in range(num_epochs):
 def draw_plot(predicted) :
     predicted = predicted.cpu()
     plt.plot(dataframe['Unix'], Y, 'bo')
-    plt.plot(dataframe['Unix'], predicted.cpu(), 'ro')
+    plt.plot(dataframe['Unix'], predicted, 'ro')
     print(predicted)
     plt.xlabel("time")
     plt.ylabel("closing price")
