@@ -8,16 +8,16 @@ import torchbnn as bnn
 import matplotlib.pyplot as plt
 import pandas
 
-dataframe = pandas.read_csv("datasets/stock_market_data/sp500/csv/AMD.csv")
+from loader import load_time_series, with_unix
+
+dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
 
 # change the dates into unix timestamps as that is a numeric type
-unix_times = [(pandas.to_datetime(row['Date']) - pandas.Timestamp("1970-01-01")) // pandas.Timedelta('1s') for _, row in dataframe.iterrows()]
-
+dataframe = with_unix(dataframe)
 # select the data that will be used to train our model
-dataframe['UNIX'] = unix_times
 #dataframe = dataframe.sample(frac=0.4)
 
-X = dataframe[['UNIX', 'Open', "Volume"]].apply(pandas.to_numeric)
+X = dataframe[['Unix', 'Open', "Volume"]].apply(pandas.to_numeric)
 Y = dataframe['Close'].apply(pandas.to_numeric)
 
 # get the gpu to send the model to
@@ -80,8 +80,8 @@ for i in range(num_epochs):
 # plot the results
 def draw_plot(predicted) :
     predicted = predicted.cpu()
-    plt.plot(dataframe['UNIX'], Y, 'bo')
-    plt.plot(dataframe['UNIX'], predicted.cpu(), 'ro')
+    plt.plot(dataframe['Unix'], Y, 'bo')
+    plt.plot(dataframe['Unix'], predicted.cpu(), 'ro')
     print(predicted)
     plt.xlabel("time")
     plt.ylabel("closing price")
