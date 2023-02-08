@@ -10,20 +10,20 @@ import pandas
 
 from loader import load_time_series, with_unix, split_dates, add_prev_days
 
-#dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
-dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
+dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
 num_prev_days = 3
 
 # change the dates into unix timestamps as that is a numeric type
-#dataframe = with_unix(dataframe, "DateTime")
-dataframe = with_unix(dataframe, "Date")
+dataframe = with_unix(dataframe, "DateTime")
+#dataframe = split_dates(dataframe)
+#dataframe = add_prev_days(dataframe, "Close", num_days=3)
+# select the data that will be used to train our model
+#dataframe = dataframe.sample(frac=0.4)
 
-#X = dataframe[["Humidity", "Temperature", "general diffuse flows"]].apply(pandas.to_numeric).iloc[num_prev_days:]
-#Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
+X = dataframe[["Unix", "Temperature", "general diffuse flows"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
 
-dataframe = add_prev_days(dataframe, "Close", num_days=3)
-X = dataframe[["Close1Day", "Close2Day", "Close3Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
-Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
+print(X)
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -35,17 +35,18 @@ device = torch.device(device_type)
 print(f"device type set to {device_type}")
 
 # create the tensors
+print(X.values)
 x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
+print(x.shape, y.shape)
 
 # create the model for our bayesian neural network
 
-#model = nn.Sequential(
-        #bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=3, out_features=10),
-        #nn.ReLU(),
-        #bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=10, out_features=1)
-        #)
+model = nn.Sequential(
+        bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=3, out_features=10),
+        nn.ReLU(),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=0.01, in_features=10, out_features=1)
+        )
 
-#model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=3, out_features=1)
 model = nn.Linear(3,1)
 
 # move the data and the model to the device
@@ -56,14 +57,14 @@ model = model.to(device)
 # select our loss functions and optimiser
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
-kl_weight = 0.0
+kl_weight = 0.01
 optimiser = optim.Adam(model.parameters(), lr=0.01)
 
 mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 100_000
+num_epochs = 10_000
 #num_epochs = 1_000
 
 # train our model
@@ -79,8 +80,7 @@ for i in range(num_epochs):
     cost.backward()
     optimiser.step()
 
-    if i % 5000 == 0:
-        print(f"epoch {i} -- loss {cost}")
+    print(f"epoch {i} -- loss {cost}")
 
 # plot the results
 def draw_plot(predicted) :
@@ -88,6 +88,7 @@ def draw_plot(predicted) :
     predicted = predicted.cpu()
     plt.plot(unix_times, Y, 'bo')
     plt.plot(unix_times, predicted, 'ro')
+    print(predicted)
     plt.xlabel("time")
     plt.ylabel("closing price")
 

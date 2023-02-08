@@ -24,3 +24,8 @@ def split_dates(df : pandas.DataFrame, date_field="Date") -> pandas.DataFrame:
     df["Year"] = years
     return df
         
+def add_prev_days(df : pandas.DataFrame, field : str, num_days=5) -> pandas.DataFrame:
+    for i in range(1, num_days + 1):
+        df[field + str(i) + "Day"] = df[field].shift(periods=i)
+
+    return df
