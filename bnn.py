@@ -22,8 +22,10 @@ dataframe = with_unix(dataframe, "Date")
 #Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 dataframe = add_prev_days(dataframe, "Close", num_days=3)
-X = dataframe[["Close1Day", "Close2Day", "Close3Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+#X = dataframe[["Close1Day", "Close2Day", "Close3Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
+
+X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -63,7 +65,7 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 100_000
+num_epochs = 200_000
 #num_epochs = 1_000
 
 # train our model
