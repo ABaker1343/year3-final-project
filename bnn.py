@@ -8,7 +8,7 @@ import torchbnn as bnn
 import matplotlib.pyplot as plt
 import pandas
 
-from loader import load_time_series, with_unix, split_dates, add_prev_days
+from loader import load_time_series, with_unix, split_dates, add_prev_days, with_days
 
 #dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
 dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
@@ -17,15 +17,13 @@ num_prev_days = 3
 # change the dates into unix timestamps as that is a numeric type
 #dataframe = with_unix(dataframe, "DateTime")
 dataframe = with_unix(dataframe, "Date")
+dataframe = with_days(dataframe, "Date")
 
 #X = dataframe[["Humidity", "Temperature", "general diffuse flows"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 #Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
 
-dataframe = add_prev_days(dataframe, "Close", num_days=3)
-#X = dataframe[["Close1Day", "Close2Day", "Close3Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+X = dataframe[["Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
-
-X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -41,14 +39,14 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 
 # create the model for our bayesian neural network
 
-#model = nn.Sequential(
-        #bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=3, out_features=10),
-        #nn.ReLU(),
-        #bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=10, out_features=1)
-        #)
+model = nn.Sequential(
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=10),
+        nn.ReLU(),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=10, out_features=1)
+        )
 
-#model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=3, out_features=1)
-model = nn.Linear(3,1)
+#model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=1)
+#model = nn.Linear(3,1)
 
 # move the data and the model to the device
 x = x.to(device)
@@ -65,7 +63,7 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 200_000
+num_epochs = 50_000
 #num_epochs = 1_000
 
 # train our model

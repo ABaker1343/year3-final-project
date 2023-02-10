@@ -10,6 +10,13 @@ def with_unix(df : pandas.DataFrame, date_field="Date") -> pandas.DataFrame:
     df['Unix'] = unix_times
     return df
 
+def with_days(df : pandas.DataFrame, date_field="Date") -> pandas.DataFrame:
+    days = []
+    for i, row in df.iterrows():
+        days.append(i)
+    df["Day"] = days
+    return df
+
 def split_dates(df : pandas.DataFrame, date_field="Date") -> pandas.DataFrame:
     days = []
     months = []
