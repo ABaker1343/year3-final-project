@@ -36,3 +36,9 @@ def add_prev_days(df : pandas.DataFrame, field : str, num_days=5) -> pandas.Data
         df[field + str(i) + "Day"] = df[field].shift(periods=i)
 
     return df
+
+def normalize_dataframe(df : pandas.DataFrame):
+    return (df - df.min()) / (df.max() - df.min())
+
+def regularize_dataframe(df : pandas.DataFrame):
+    return (df - df.mean()) / df.std()

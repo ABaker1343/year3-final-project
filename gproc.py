@@ -2,12 +2,20 @@ import numpy as np
 import GPy
 import matplotlib.pyplot as plt
 
-from loader import load_time_series, with_unix, split_dates, with_days
+from loader import load_time_series, normalize_dataframe, with_unix, split_dates, with_days
+
+GPy.plotting.change_plotting_library("matplotlib")
 
 dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
 dataframe = with_unix(dataframe)
 dataframe = split_dates(dataframe)
 dataframe = with_days(dataframe)
+
+# strip out the fields that we dont want
+dataframe = dataframe[["Day", "Close"]]
+
+# normalize data in the dataframe
+dataframe = normalize_dataframe(dataframe)
 
 data_length = len(dataframe)
 # split data so that we can use 20% for predictions
@@ -22,17 +30,14 @@ Y = training[["Close"]]
 
 print(X)
 
-#X = np.random.uniform(-3, 3, (20,1))
-#Y = np.sin(X) + np.random.randn(20,1) * 0.05
-
-GPy.plotting.change_plotting_library("matplotlib")
-
 # select the kernel for our guassian process
-rbf_kernel = GPy.kern.RBF(input_dim=1, variance=1, lengthscale=1)
-linear_kernel = GPy.kern.Linear(input_dim=1, variances=1.0)
-periodic_kernel = GPy.kern.StdPeriodic(input_dim=1, variance=1.0, period=300)
+kernels = []
+kernels.append(rbf_kernel := GPy.kern.RBF(input_dim=1, variance=1/2, lengthscale=1/12)) # a lower length scale will make it so that values are evaluated as less similar
+#kernels.append(linear_kernel := GPy.kern.Linear(input_dim=1, variances=1.0))
+kernels.append(periodic_kernel := GPy.kern.StdPeriodic(input_dim=1, variance=1/1, period=1/12))
 # combine the RBF and linear kernel to try and intergrate a more general linear trend into the RBF kernel
-kernel = GPy.kern.Add([rbf_kernel, linear_kernel, periodic_kernel])
+kernel = GPy.kern.Add(kernels)
+
 kernel.plot()
 
 #define the model
