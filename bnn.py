@@ -28,7 +28,7 @@ dataframe = normalize_dataframe(dataframe)
 
 X = dataframe[["Day", "Day1Day", "Day2Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
-X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+#X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
