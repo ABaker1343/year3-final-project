@@ -8,22 +8,27 @@ import torchbnn as bnn
 import matplotlib.pyplot as plt
 import pandas
 
-from loader import load_time_series, with_unix, split_dates, add_prev_days, with_days
+from loader import *
 
 #dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
 dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
 num_prev_days = 3
 
 # change the dates into unix timestamps as that is a numeric type
-#dataframe = with_unix(dataframe, "DateTime")
-dataframe = with_unix(dataframe, "Date")
+#dataframe = with_unix(dataframe, "DateTime") # power consumption data
 dataframe = with_days(dataframe, "Date")
+dataframe = add_prev_days(dataframe, "Day", num_prev_days)
+
+# strip out only what we are using for training
+dataframe = dataframe[["High", "Volume", "Day", "Day1Day", "Day2Day", "Open", "Close"]]
+dataframe = normalize_dataframe(dataframe)
 
 #X = dataframe[["Humidity", "Temperature", "general diffuse flows"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 #Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
 
-X = dataframe[["Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+X = dataframe[["Day", "Day1Day", "Day2Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
+X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -40,9 +45,9 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 # create the model for our bayesian neural network
 
 model = nn.Sequential(
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=10),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=3, out_features=80),
         nn.ReLU(),
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=10, out_features=1)
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=80, out_features=1)
         )
 
 #model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=1)
@@ -56,14 +61,14 @@ model = model.to(device)
 # select our loss functions and optimiser
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
-kl_weight = 0.0
-optimiser = optim.Adam(model.parameters(), lr=0.01)
+kl_weight = 0.01
+optimiser = optim.Adam(model.parameters(), lr=1.0e-5)
 
 mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 50_000
+num_epochs = 25_000
 #num_epochs = 1_000
 
 # train our model
@@ -84,10 +89,10 @@ for i in range(num_epochs):
 
 # plot the results
 def draw_plot(predicted) :
-    unix_times = dataframe['Unix'].iloc[num_prev_days:]
+    days = dataframe['Day'].iloc[num_prev_days:]
     predicted = predicted.cpu()
-    plt.plot(unix_times, Y, 'bo')
-    plt.plot(unix_times, predicted, 'ro')
+    plt.plot(days, Y, 'bo')
+    plt.plot(days, predicted, 'ro')
     plt.xlabel("time")
     plt.ylabel("closing price")
 
