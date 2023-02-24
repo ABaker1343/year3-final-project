@@ -15,7 +15,7 @@ dataframe = with_days(dataframe)
 dataframe = dataframe[["Day", "Close"]]
 
 # normalize data in the dataframe
-dataframe = normalize_dataframe(dataframe)
+dataframe["Day"] = normalize_dataframe(dataframe["Day"]) * 10
 
 data_length = len(dataframe)
 # split data so that we can use 20% for predictions
@@ -23,7 +23,10 @@ training_percentage = 0.8
 training = dataframe.iloc[: int(data_length * training_percentage)]
 testing = dataframe.iloc[int(data_length * training_percentage) :]
 
-training = training.sample(frac=0.2)
+data_fraction = 0.2
+#training = training.sample(frac=data_fraction)
+start_index = int(len(training) * (1 - data_fraction))
+training = training.iloc[start_index : ]
 
 X = training[["Day"]].to_numpy()
 Y = training[["Close"]]

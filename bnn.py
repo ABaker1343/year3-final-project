@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 import torch
@@ -62,16 +63,18 @@ model = model.to(device)
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
 kl_weight = 0.01
-optimiser = optim.Adam(model.parameters(), lr=1.0e-5)
+learning_rate = 1.0e-8
+optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 
 mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 25_000
+num_epochs = 50_000
 #num_epochs = 1_000
 
 # train our model
+prev_loss = sys.float_info.max
 for i in range(num_epochs):
     # calculate the loss for the current epoch
     predictions = model(x)
@@ -84,8 +87,13 @@ for i in range(num_epochs):
     cost.backward()
     optimiser.step()
 
+    if abs(prev_loss - cost) < 1.0e-2:
+        break
+
     if i % 5000 == 0:
         print(f"epoch {i} -- loss {cost}")
+
+print("final loss -- {cost}")
 
 # plot the results
 def draw_plot(predicted) :
