@@ -27,9 +27,14 @@ dataframe = normalize_dataframe(dataframe)
 #X = dataframe[["Humidity", "Temperature", "general diffuse flows"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 #Y = dataframe['Zone 2  Power Consumption'].apply(pandas.to_numeric).iloc[num_prev_days:]
 
-X = dataframe[["Day", "Day1Day", "Day2Day"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 Y = dataframe['Close'].apply(pandas.to_numeric).iloc[num_prev_days:]
 #X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
+
+# create the x array based on the number of previous days
+params = []
+for i in range(1, num_prev_days):
+    params.append("Day" + str(i) + "Day")
+X = dataframe[params]
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -46,7 +51,7 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 # create the model for our bayesian neural network
 
 model = nn.Sequential(
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=3, out_features=80),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params), out_features=80),
         nn.ReLU(),
         bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=80, out_features=1)
         )
@@ -90,7 +95,9 @@ for i in range(num_epochs):
     if abs(prev_loss - cost) < 1.0e-2:
         break
 
-    if i % 5000 == 0:
+    if device_type == "cpu":
+        print(f"epoch {i} -- loss {cost}")
+    elif i % 5000 == 0:
         print(f"epoch {i} -- loss {cost}")
 
 print("final loss -- {cost}")
