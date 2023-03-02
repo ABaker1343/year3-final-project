@@ -54,7 +54,7 @@ model = nn.Sequential(
         )
 
 #model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=1)
-model = nn.Linear(len(params),1)
+#model = nn.Linear(len(params),1)
 
 # move the data and the model to the device
 x = x.to(device)
