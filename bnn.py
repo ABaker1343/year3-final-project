@@ -12,23 +12,21 @@ import pandas
 from loader import *
 
 #dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
-dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
-num_prev_days = 6
+num_prev_days = 14
+num_future_days = 1
 
-# change the dates into unix timestamps as that is a numeric type
-#dataframe = with_unix(dataframe, "DateTime") # power consumption data
-dataframe = with_days(dataframe, "Date")
-dataframe = add_prev_days(dataframe, "Day", num_prev_days)
+fields=["Day"]
+pred_fields = ["Close"]
+dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fields + pred_fields, num_prev_days=num_prev_days, prev_fields=fields)
+
 dataframe["Day"] = normalize_dataframe(dataframe["Day"])
-
-# strip out only what we are using for training
-#dataframe = normalize_dataframe(dataframe)
 
 Y = dataframe[['Close']].apply(pandas.to_numeric).iloc[num_prev_days:]
 #X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # create the x array based on the number of previous days
 params = ["Day"]
+print(dataframe)
 for i in range(1, num_prev_days):
     params.append("Day" + str(i) + "Day")
 X = dataframe[params].iloc[num_prev_days:]
