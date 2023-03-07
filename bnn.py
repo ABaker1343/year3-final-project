@@ -72,7 +72,7 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 1_000_000
+num_epochs = 100_000
 #num_epochs = 1_000
 
 convergance_tolerance = 1.0e-9

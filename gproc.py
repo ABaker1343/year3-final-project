@@ -2,54 +2,80 @@ import numpy as np
 import GPy
 import matplotlib.pyplot as plt
 
-from loader import load_time_series, normalize_dataframe, with_unix, split_dates, with_days
+from loader import *
 
 GPy.plotting.change_plotting_library("matplotlib")
 
-dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv")
-dataframe = with_unix(dataframe)
-dataframe = split_dates(dataframe)
-dataframe = with_days(dataframe)
+############################## DATAFRAME SETUP #####################################
 
-# strip out the fields that we dont want
-dataframe = dataframe[["Day", "Close"]]
+dataset = "AMD stock"
+dataset= "tetuan power"
 
-# normalize data in the dataframe
-dataframe["Day"] = normalize_dataframe(dataframe["Day"])
+fields = ["Day"]
 
-# split data so that we can use 20% for predictions
+if dataset == "AMD stock":
+    pred_fields = ["Close"]
+    dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fields + pred_fields)
+else:
+    pred_fields = ["Zone 1 Power Consumption"]
+    dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv", fields + pred_fields, date_field="DateTime")
 
+# splot our data into training and testing
 data_length = len(dataframe)
 training_percentage = 0.8
-training = dataframe.iloc[: int(data_length * training_percentage)]
-testing = dataframe.iloc[int(data_length * training_percentage) :]
+split_point = int(data_length * training_percentage)
 
-data_fraction = 0.2
-#training = training.sample(frac=data_fraction)
-start_index = int(len(training) * (1 - data_fraction))
-training = training.iloc[start_index : ]
+training_amount = 14
+testing_amount = 2
 
-X = training[["Day"]].to_numpy()
-Y = training[["Close"]]
+# normalize the data and split into training and testing
+dataframe = dataframe.iloc[split_point - training_amount : split_point + testing_amount]
+dataframe = normalize_dataframe(dataframe)
+
+training = dataframe.iloc[ : training_amount]
+testing = dataframe.iloc[training_amount : ]
+print(testing)
+
+X = training[fields].to_numpy()
+Y = training[pred_fields]
 
 # define the testing data
-X_test = testing[["Day"]]
-Y_test = testing[["Close"]]
+X_test = testing[fields].to_numpy()
+Y_test = testing[pred_fields]
 
 print(X)
 
+################################### DEFINE THE MODEL ###############################################
+
 # select the kernel for our guassian process
 kernels = []
-kernels.append(rbf_kernel := GPy.kern.RBF(input_dim=1, variance=1/2, lengthscale=1/12)) # a lower length scale will make it so that values are evaluated as less similar
-#kernels.append(linear_kernel := GPy.kern.Linear(input_dim=1, variances=1.0))
-kernels.append(periodic_kernel := GPy.kern.StdPeriodic(input_dim=1, variance=1/1, period=1/48))  # frequent period on this kernel to capture the constant up and down
-# combine the RBF and linear kernel to try and intergrate a more general linear trend into the RBF kernel
-kernel = GPy.kern.Add(kernels)
 
-kernel.plot()
+##################### kernels for stock predictions ###################################
+if dataset == "AMD stock":
+    kernels.append(rbf_kernel := GPy.kern.RBF(input_dim=len(fields), variance=1, lengthscale=1/2)) 
+    # a lower length scale will make it so that values are evaluated as less similar
+
+    #kernels.append(linear_kernel := GPy.kern.Linear(input_dim=len(fields), variances=1.0))
+
+    kernels.append(periodic_kernel := GPy.kern.StdPeriodic(input_dim=len(fields), variance=1/12, period=1/1, lengthscale=1/4))
+    # frequent period on this kernel to capture the constant up and down
+
+    # combine the RBF and linear kernel to try and intergrate a more general linear trend into the RBF kernel
+
+##################### kernels for power consumption predictions #######################
+else:
+    kernels.append(rbf_kernel := GPy.kern.RBF(input_dim=len(fields), variance=1.2, lengthscale=1/10)) 
+    #kernels.append(linear_kernel := GPy.kern.Linear(input_dim=len(fields), variances=1.0))
+    #kernels.append(periodic_kernel := GPy.kern.StdPeriodic(input_dim=len(fields), variance=1/12, period=1, lengthscale=1/4))
+    # combine the RBF and linear kernel to try and intergrate a more general linear trend into the RBF kernel
+
+kernel = GPy.kern.Add(kernels)
+kernel.plot(visible_dims=[0])
 
 #define the model
 model = GPy.models.GPRegression(X, Y, kernel, normalizer=False)
+model.plot(visible_dims=[0])
+plt.show()
 
 # opimise the model
 model.optimize(messages=True)
@@ -59,17 +85,15 @@ model.optimize(messages=True)
 #fig = model.plot(visible_dims=[0])
 #plt.show()
 
-num_days_predicted = 30
-X_test = X_test.iloc[:num_days_predicted].to_numpy()
-Y_test = Y_test.iloc[:num_days_predicted]
+####################################### PLOT THE RESULTS #############################################
 
 # make our predictions
 pred_test = model.predict(X_test)
 
 mse = 0
-for i in range(num_days_predicted):
-    mse += pow(Y_test["Close"].iloc[i] - pred_test[0][i], 2)
-    print(Y_test["Close"].iloc[i] , pred_test[0][i])
+for i in range(len(pred_test)):
+    mse += pow(Y_test.iloc[i] - pred_test[0][i], 2)
+    print(Y_test.iloc[i] , pred_test[0][i])
 
 # plot the model and the predictions
 
@@ -79,9 +103,9 @@ plt.plot(X_test, Y_test, "go")
 plt.show()
 #plt.show(filename="gaussian_process_plot.png")
 
-plt.plot(X_test, Y_test["Close"], 'bo')
-plt.plot(X_test, pred_test[0], 'ro')
-plt.show()
+#plt.plot(X_test, Y_test["Close"], 'bo')
+#plt.plot(X_test, pred_test[0], 'ro')
+#plt.show()
 
 print(f"mse for extrapolated testing data: {mse}")
 

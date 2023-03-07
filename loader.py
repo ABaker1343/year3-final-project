@@ -1,7 +1,16 @@
 import pandas
 
-def load_time_series(path : str):
-    df = pandas.read_csv(path)
+def load_time_series(file, fields, num_prev_days=0, prev_fields="", date_field="Date"):
+    df = pandas.read_csv(file)
+    df = with_unix(df, date_field)
+    df = split_dates(df, date_field)
+    df = with_days(df, date_field)
+
+    if num_prev_days > 0:
+        df = add_prev_days(df, prev_fields, num_prev_days)
+
+    df = df[fields]
+
     return df
 
 def with_unix(df : pandas.DataFrame, date_field="Date") -> pandas.DataFrame:
