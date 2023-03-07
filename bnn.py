@@ -17,19 +17,21 @@ num_future_days = 1
 
 fields=["Day"]
 pred_fields = ["Close"]
-dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fields + pred_fields, num_prev_days=num_prev_days, prev_fields=fields)
+dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fields + pred_fields, num_prev_days=num_prev_days, prev_fields=["Close"])
 
 dataframe["Day"] = normalize_dataframe(dataframe["Day"])
-
-Y = dataframe[['Close']].apply(pandas.to_numeric).iloc[num_prev_days:]
-#X = dataframe[["Open", "Volume", "High"]].apply(pandas.to_numeric).iloc[num_prev_days:]
 
 # create the x array based on the number of previous days
 params = ["Day"]
 print(dataframe)
 for i in range(1, num_prev_days):
-    params.append("Day" + str(i) + "Day")
+    params.append("Close" + str(i) + "Day")
+
 X = dataframe[params].iloc[num_prev_days:]
+Y = dataframe[pred_fields].apply(pandas.to_numeric).iloc[num_prev_days:]
+
+print(X)
+print(Y)
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -46,9 +48,9 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 # create the model for our bayesian neural network
 
 model = nn.Sequential(
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params), out_features=len(params) * 50),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params), out_features=len(params) * 5),
         nn.ReLU(),
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params) * 50, out_features=1)
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params) * 5, out_features=1)
         )
 
 #model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=1)
@@ -63,14 +65,14 @@ model = model.to(device)
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
 kl_weight = 0 # 0.1
-learning_rate = 1.0e-8
+learning_rate = 1.0e-5
 optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 
 mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 100_000
+num_epochs = 20_000
 #num_epochs = 1_000
 
 convergance_tolerance = 1.0e-9
