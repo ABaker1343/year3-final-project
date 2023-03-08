@@ -1,6 +1,6 @@
 import pandas
 
-def load_time_series(file, fields, num_prev_days=0, prev_fields=[], date_field="Date"):
+def load_time_series(file, fields, num_prev_days=0, prev_fields=[], date_field="Date", num_future_days=0, future_fields=[]):
     df = pandas.read_csv(file)
     df = with_unix(df, date_field)
     df = split_dates(df, date_field)
@@ -11,6 +11,12 @@ def load_time_series(file, fields, num_prev_days=0, prev_fields=[], date_field="
         for field in prev_fields:
             for i in range(1, num_prev_days + 1):
                 fields.append(field + str(i) + "Day")
+
+    if num_future_days > 0:
+        df = add_future_days(df, future_fields, num_future_days)
+        for field in future_fields:
+            for i in range(1, num_future_days + 1):
+                fields.append(field + "+" + str(i) + "Day")
 
     df = df[fields]
 
@@ -47,6 +53,13 @@ def add_prev_days(df : pandas.DataFrame, fields=[], num_days=5) -> pandas.DataFr
     for field in fields:
         for i in range(1, num_days + 1):
             df[field + str(i) + "Day"] = df[field].shift(periods=i)
+
+    return df
+
+def add_future_days(df, fields=[], num_days=5):
+    for field in fields:
+        for i in range(1, num_days + 1):
+            df[field + "+" + str(i) + "Day"] = df[field].shift(periods=-i)
 
     return df
 
