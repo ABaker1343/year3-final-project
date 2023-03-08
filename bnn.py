@@ -32,8 +32,6 @@ pred_params = ["Close"]
 for i in range(1, num_future_days):
     pred_params.append("Close" + "+" + str(i) + "Day")
 
-print(dataframe)
-
 training_fraction = 0.8
 split_point = int(len(dataframe) * training_fraction)
 training = dataframe.iloc[ : split_point]
@@ -41,9 +39,6 @@ testing = dataframe.iloc[split_point : split_point + num_future_days]
 
 X = training[params].iloc[num_prev_days:]
 Y = training[pred_params].apply(pandas.to_numeric).iloc[num_prev_days:]
-
-print(X)
-print(Y)
 
 # get the gpu to send the model to
 if torch.cuda.is_available():
@@ -77,17 +72,17 @@ model = model.to(device)
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
 kl_weight = 0 # 0.1
-learning_rate = 1.0e-5
+learning_rate = 1.0e-7
 optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 
 mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 30_000
+num_epochs = 50_000
 #num_epochs = 1_000
 
-convergance_tolerance = 1.0e-10
+convergance_tolerance = 1.0e-6
 accuracy_tolerance = sys.float_info.min # 1.0e-6
 
 # train our model
@@ -132,13 +127,24 @@ x_testing = torch.from_numpy(testing[params].values).float()
 x_testing = x_testing.to(device)
 y_testing = torch.from_numpy(testing[pred_params].values).float()
 
-for i in range(10):
-    predictions = model(x_testing)
-    prediction = predictions
+predictions = []
+
+for i in range(1000):
+    predictions.append(model(x_testing).cpu().detach().numpy())
+
+# find the mean and standard deviation of the predictions
+prediction_std = np.std(predictions)
+prediction_mean = np.mean(predictions)
+
+print("mean: ", prediction_mean)
+print("std deviation: ", prediction_std)
+print("real: ", testing[pred_params].values)
 
 ## print predictions out to console
-    print(model.weight_mu)
-    print("real: ", y_testing, "\n", "predicted: ", predictions)
+#print("real: ", y_testing, "\n", "predicted: ", predictions)
 
-draw_plot(predictions.data)
+#for m in model.modules():
+    #print (m)
+
+#draw_plot(predictions[0].data)
 
