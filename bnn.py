@@ -38,7 +38,6 @@ training_fraction = 0.8
 split_point = int(len(dataframe) * training_fraction)
 training = dataframe.iloc[ : split_point]
 testing = dataframe.iloc[split_point : split_point + num_future_days]
-testing = testing.iloc[0]
 
 X = training[params].iloc[num_prev_days:]
 Y = training[pred_params].apply(pandas.to_numeric).iloc[num_prev_days:]
@@ -133,30 +132,34 @@ def draw_plot(predicted) :
     #plt.plot(stats.norm.pdf(mu, sigma))
     #plt.show()
 
+num_tests = 12
+for test_num in range(num_tests):
 
-x_testing = torch.from_numpy(testing[params].values).float()
-x_testing = x_testing.to(device)
-y_testing = torch.from_numpy(testing[pred_params].values).float()
+    num_predictions = 10_000
+    predictions = []
+    prediction_means = []
+    prediction_stds = []
+    test_data = testing.iloc[test_num]
 
-num_predictions = 10_000
-predictions = []
-prediction_means = []
-prediction_stds = []
+    x_testing = torch.from_numpy(test_data[params].values).float()
+    x_testing = x_testing.to(device)
 
-for i in range(num_predictions):
-    predictions.append(model(x_testing).cpu().detach().numpy())
+    y_testing = torch.from_numpy(test_data[pred_params].values).float()
 
-# find the mean and standard deviation of the predictions
-predictions_trans = np.transpose(predictions)
+    for i in range(num_predictions):
+        predictions.append(model(x_testing).cpu().detach().numpy())
 
-for d in range(num_future_days):
-    predictions_trans = np.transpose
-    prediction_means.append(np.mean(np.transpose(predictions)[d]))
-    prediction_stds.append(np.std(np.transpose(predictions)[d]))
+    # find the mean and standard deviation of the predictions
+    predictions_trans = np.transpose(predictions)
 
-print("prediction means: ", prediction_means)
-print("prediction stds: ", prediction_stds)
-print("real: ", testing)
+    for d in range(num_future_days):
+        predictions_trans = np.transpose
+        prediction_means.append(np.mean(np.transpose(predictions)[d]))
+        prediction_stds.append(np.std(np.transpose(predictions)[d]))
+
+    print("prediction means: ", prediction_means)
+    print("prediction stds: ", prediction_stds)
+    print("real: ", test_data)
 
 #draw_dist([x[0][0] for x in predictions])
 
