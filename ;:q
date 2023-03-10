@@ -15,7 +15,7 @@ from loader import *
 
 #dataframe = load_time_series("datasets/tetuan_city_power_consumption.csv").iloc[:200]
 num_prev_days = 14
-num_future_days = 3
+num_future_days = 1
 
 fields=["Day"]
 pred_fields = ["Close"]
@@ -26,7 +26,7 @@ dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fie
 dataframe["Day"] = normalize_dataframe(dataframe["Day"])
 
 # create the x array based on the number of previous days
-params = ["Day"]
+params = []
 for i in range(1, num_prev_days):
     params.append("Close" + str(i) + "Day")
 
@@ -38,7 +38,6 @@ training_fraction = 0.8
 split_point = int(len(dataframe) * training_fraction)
 training = dataframe.iloc[ : split_point]
 testing = dataframe.iloc[split_point : split_point + num_future_days]
-testing = testing.iloc[0]
 
 X = training[params].iloc[num_prev_days:]
 Y = training[pred_params].apply(pandas.to_numeric).iloc[num_prev_days:]
@@ -58,12 +57,12 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 # create the model for our bayesian neural network
 
 model = nn.Sequential(
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1/12, in_features=len(params), out_features=len(params) * 5),
-        nn.ReLU(),
-        bnn.BayesLinear(prior_mu=0, prior_sigma=1/12, in_features=len(params) * 5, out_features=num_future_days)
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params), out_features=len(params) * 10),
+        #nn.ReLU(),
+        bnn.BayesLinear(prior_mu=0, prior_sigma=1/3, in_features=len(params) * 10, out_features=num_future_days)
         )
 
-#model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=len(params), out_features=num_future_days)
+#model = bnn.BayesLinear(prior_mu=0, prior_sigma=1, in_features=1, out_features=1)
 #model = nn.Linear(len(params), num_future_days)
 
 # move the data and the model to the device
@@ -82,11 +81,11 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 50_000
-#num_epochs = 10_000
+num_epochs = 150_000
+#num_epochs = 1_000
 
-convergance_tolerance = sys.float_info.min #1.0e-3
-accuracy_tolerance = sys.float_info.min #1.0e0
+convergance_tolerance = 1.0e-6
+accuracy_tolerance = 1.0e1
 
 # train our model
 prev_loss = sys.float_info.max
@@ -126,44 +125,29 @@ def draw_plot(predicted) :
 
     plt.show()
 
-#def draw_dist(predictions):
-    #mu = np.mean(predictions)
-    #sigma = np.std(predictions)
-    #print(f"mu: {mu} sigma: {sigma}")
-    #plt.plot(stats.norm.pdf(mu, sigma))
-    #plt.show()
+def draw_dist(predictions):
+    plt.plot(predictions)
+    plt.plot(stats.norm.pdf(predictions, np.mean(predictions), np.std(predictions)))
 
 
 x_testing = torch.from_numpy(testing[params].values).float()
 x_testing = x_testing.to(device)
 y_testing = torch.from_numpy(testing[pred_params].values).float()
 
-num_predictions = 10_000
 predictions = []
-prediction_means = []
-prediction_stds = []
 
-for i in range(num_predictions):
+for i in range(1000):
     predictions.append(model(x_testing).cpu().detach().numpy())
 
 # find the mean and standard deviation of the predictions
-predictions_trans = np.transpose(predictions)
+prediction_std = np.std(predictions)
+prediction_mean = np.mean(predictions)
 
-for d in range(num_future_days):
-    predictions_trans = np.transpose
-    prediction_means.append(np.mean(np.transpose(predictions)[d]))
-    prediction_stds.append(np.std(np.transpose(predictions)[d]))
+draw_dist(predictions)
 
-print("prediction means: ", prediction_means)
-print("prediction stds: ", prediction_stds)
-print("real: ", testing)
-
-#draw_dist([x[0][0] for x in predictions])
-
-#for m in model.modules():
-    #if isinstance(m, bnn.BayesLinear):
-        #print(f"weight mean: {m.weight_mu}, \nweight sigma: {m.weight_log_sigma}")
-        #print(m.extra_repr())
+print("mean: ", prediction_mean)
+print("std deviation: ", prediction_std)
+print("real: ", testing[pred_params].values)
 
 ## print predictions out to console
 #print("real: ", y_testing, "\n", "predicted: ", predictions)
