@@ -7,6 +7,7 @@ import torch.optim as optim
 import torchbnn as bnn
 
 import matplotlib.pyplot as plt
+import seaborn
 import pandas
 
 import scipy.stats as stats
@@ -82,7 +83,7 @@ kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
 num_epochs = 50_000
-#num_epochs = 10_000
+#num_epochs = 1000
 
 convergance_tolerance = sys.float_info.min #1.0e-3
 accuracy_tolerance = sys.float_info.min #1.0e0
@@ -132,7 +133,13 @@ def draw_plot(predicted) :
     #plt.plot(stats.norm.pdf(mu, sigma))
     #plt.show()
 
-num_tests = 12
+def plot_distribution(values):
+    plt.xlim(min(values), max(values))
+    plt.xlabel("cost")
+    plt.ylabel("density")
+    seaborn.kdeplot(values, shade=True)
+
+num_tests = 1
 for test_num in range(num_tests):
 
     num_predictions = 10_000
@@ -160,6 +167,10 @@ for test_num in range(num_tests):
     print("prediction means: ", prediction_means)
     print("prediction stds: ", prediction_stds)
     print("real: ", test_data)
+
+    # plot the distribution of values for the first day in the prediction
+    plot_distribution(np.transpose(predictions)[0])
+    plt.show()
 
 #draw_dist([x[0][0] for x in predictions])
 
