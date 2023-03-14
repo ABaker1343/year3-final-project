@@ -25,6 +25,7 @@ dataframe = load_time_series("datasets/stock_market_data/sp500/csv/AMD.csv", fie
                              num_future_days=num_future_days - 1, future_fields=["Close"])
 
 dataframe["Day"] = normalize_dataframe(dataframe["Day"])
+#dataframe = normalize_dataframe(dataframe)
 
 # create the x array based on the number of previous days
 params = ["Day"]
@@ -59,7 +60,7 @@ x, y = torch.from_numpy(X.values).float(), torch.from_numpy(Y.values).float()
 
 model = nn.Sequential(
         bnn.BayesLinear(prior_mu=0, prior_sigma=1/12, in_features=len(params), out_features=len(params) * 5),
-        nn.ReLU(),
+        #nn.ReLU(),
         bnn.BayesLinear(prior_mu=0, prior_sigma=1/12, in_features=len(params) * 5, out_features=num_future_days)
         )
 
@@ -74,7 +75,7 @@ model = model.to(device)
 # select our loss functions and optimiser
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
-kl_weight = 0.1
+kl_weight = 0.01
 learning_rate = 1.0e-7
 optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -82,7 +83,7 @@ mse_loss = mse_loss.to(device)
 kl_loss = kl_loss.to(device)
 
 # set the number of epochs that we want to use
-num_epochs = 50_000
+num_epochs = 500_000
 #num_epochs = 1000
 
 convergance_tolerance = sys.float_info.min #1.0e-3
@@ -133,13 +134,15 @@ def draw_plot(predicted) :
     #plt.plot(stats.norm.pdf(mu, sigma))
     #plt.show()
 
-def plot_distribution(values):
-    plt.xlim(min(values), max(values))
+def plot_distribution(pred_values, actual_value):
+    plt.xlim(min(pred_values), max(pred_values))
     plt.xlabel("cost")
     plt.ylabel("density")
-    seaborn.kdeplot(values, shade=True)
+    seaborn.kdeplot(pred_values, fill=True)
+    plt.plot(actual_value, 1, "go")
+    plt.plot(np.mean(pred_values), 1, "ro")
 
-num_tests = 1
+num_tests = 3
 for test_num in range(num_tests):
 
     num_predictions = 10_000
@@ -169,7 +172,7 @@ for test_num in range(num_tests):
     print("real: ", test_data)
 
     # plot the distribution of values for the first day in the prediction
-    plot_distribution(np.transpose(predictions)[0])
+    plot_distribution(np.transpose(predictions)[0], test_data["Close"])
     plt.show()
 
 #draw_dist([x[0][0] for x in predictions])
